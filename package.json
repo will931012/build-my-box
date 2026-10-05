@@ -20,7 +20,8 @@
     "db:deploy": "npm run db:deploy -w @bmb/server",
     "db:seed": "npm run db:seed -w @bmb/server",
     "db:reset": "npm run db:reset -w @bmb/server",
-    "bench": "npm run bench -w @bmb/shared"
+    "bench": "npm run bench -w @bmb/shared",
+    "start:prod": "npm run start:prod -w @bmb/server"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
@@ -28,6 +29,6 @@
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

@@ -90,7 +90,7 @@ export function Catalog({ state, onAdd, className }: { state: BuilderState; onAd
         ) : visible.length === 0 ? (
           <EmptyState title="Sin resultados">Prueba con otra búsqueda o categoría.</EmptyState>
         ) : (
-          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-2 min-[1800px]:grid-cols-3">
+          <ul className="grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
             {visible.map((p: Product) => {
               const qty = quantities[p.id] ?? 0;
               const check = analysis?.additions[p.id];
