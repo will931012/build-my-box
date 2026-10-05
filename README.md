@@ -11,6 +11,7 @@ Aplicación web de e-commerce para armar una **caja de envío internacional de t
 - [Stack y estructura](#stack-y-estructura)
 - [Instalación y ejecución](#instalación-y-ejecución)
 - [Pruebas](#pruebas)
+- [Despliegue](#despliegue)
 - [Cómo funciona el motor de packing](#cómo-funciona-el-motor-de-packing)
 - [Flujos de la app](#flujos-de-la-app)
 - [API](#api)
@@ -135,6 +136,22 @@ Las pruebas del motor (`packages/shared/test/packing.test.ts`) cubren:
 - **Determinismo:** `checkAdditions` es equivalente a un repack completo; se verifica en 30 carritos × 34 productos.
 
 Las pruebas e2e recorren el flujo completo (elegir caja → agregar → vistas 3D → checkout → orden pagada → packing list) y el caso "no cabe por orientación", en escritorio y en móvil (Pixel 7).
+
+---
+
+## Despliegue
+
+Producción usa **Railway** (API + PostgreSQL) y **Vercel** (frontend). Cada push a `main` redespliega ambos automáticamente.
+
+| Pieza | Dónde | Configuración |
+|---|---|---|
+| PostgreSQL | Railway, proyecto `build-my-box`, servicio `Postgres` | — |
+| API (Express) | Railway, servicio `api` → <https://api-production-ca1f.up.railway.app> | [railway.json](railway.json): build `npm run build`, arranque `npm run start:prod` (aplica migraciones y arranca), healthcheck `/api/health` |
+| Frontend | Vercel, *Root Directory* = `apps/web` | [apps/web/vercel.json](apps/web/vercel.json): reenvía `/api/*` a la API de Railway y sirve el SPA |
+
+Variables del servicio `api` en Railway: `DATABASE_URL=${{Postgres.DATABASE_URL}}` (red privada), `ADMIN_TOKEN` (aleatorio; consúltalo con `railway variables --service api`), `NODE_ENV=production`, `PAYMENT_PROVIDER=mock`, `PORT=8080`.
+
+La URL de Railway también sirve la app completa (el servidor incluye el frontend compilado), útil como respaldo de Vercel.
 
 ---
 
