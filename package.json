@@ -1,0 +1,33 @@
+{
+  "name": "build-my-box",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Build My Box — arma tu caja de envío internacional con acomodo 3D automático",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,magenta \"npm run dev -w @bmb/server\" \"npm run dev -w @bmb/web\"",
+    "build": "npm run build -w @bmb/web",
+    "start": "npm run start -w @bmb/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "npm run db:migrate -w @bmb/server",
+    "db:deploy": "npm run db:deploy -w @bmb/server",
+    "db:seed": "npm run db:seed -w @bmb/server",
+    "db:reset": "npm run db:reset -w @bmb/server",
+    "bench": "npm run bench -w @bmb/shared"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "concurrently": "^9.2.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

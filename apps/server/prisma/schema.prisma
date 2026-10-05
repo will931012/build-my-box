@@ -1,0 +1,129 @@
+// Build My Box — modelo de datos.
+// Unidades: longitudes en mm, pesos en g, precios en centavos (USD).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PackagingType {
+  RIGID
+  BOX
+  CAN
+  BAG
+  BOTTLE
+  LIQUID
+  JAR
+  FRAGILE
+  SOFT
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  FULFILLED
+  CANCELLED
+}
+
+model Product {
+  id                   String        @id @default(cuid())
+  sku                  String        @unique
+  name                 String
+  description          String        @default("")
+  category             String
+  imageUrl             String?
+  priceCents           Int
+  /// Unidades físicas en almacén.
+  stock                Int           @default(0)
+  /// Unidades reservadas por órdenes no canceladas ni despachadas. Disponible = stock - reserved.
+  reserved             Int           @default(0)
+  lengthMm             Int
+  widthMm              Int
+  heightMm             Int
+  weightG              Int
+  packagingType        PackagingType
+  /// Códigos de orientación permitidos: LWH, WLH, LHW, HLW, WHL, HWL.
+  allowedOrientations  String[]
+  canSupportWeight     Boolean       @default(true)
+  maxLoadOnTopG        Int           @default(0)
+  /// 0 = ninguna, 1 = baja, 2 = media, 3 = alta
+  fragility            Int           @default(0)
+  compressibility      Int           @default(0)
+  shippingRestrictions String        @default("")
+  active               Boolean       @default(true)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  orderItems           OrderItem[]
+
+  @@index([category])
+  @@index([active])
+}
+
+model Box {
+  id              String   @id @default(cuid())
+  name            String
+  description     String   @default("")
+  innerLengthMm   Int
+  innerWidthMm    Int
+  innerHeightMm   Int
+  maxWeightG      Int
+  priceCents      Int
+  safetyMarginPct Float    @default(10)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  orders          Order[]
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  number             Int         @unique @default(autoincrement())
+  status             OrderStatus @default(PENDING_PAYMENT)
+  boxId              String
+  box                Box         @relation(fields: [boxId], references: [id])
+  /// Copia de la caja al momento de la orden (por si luego se edita).
+  boxSnapshot        Json
+  recipientName      String
+  recipientPhone     String
+  recipientAddress   String
+  recipientCity      String
+  recipientProvince  String      @default("")
+  recipientCountry   String      @default("Cuba")
+  recipientNotes     String      @default("")
+  subtotalCents      Int
+  boxPriceCents      Int
+  totalCents         Int
+  totalWeightG       Int
+  /// Resultado completo del motor de packing (PackingResult).
+  packingPlan        Json
+  customsDeclaration String      @default("")
+  paymentProvider    String?
+  paymentReference   String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  paidAt             DateTime?
+  cancelledAt        DateTime?
+  fulfilledAt        DateTime?
+  items              OrderItem[]
+
+  @@index([status])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  sku            String
+  name           String
+  quantity       Int
+  unitPriceCents Int
+  weightG        Int
+
+  @@index([orderId])
+}

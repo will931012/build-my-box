@@ -1,0 +1,39 @@
+{
+  "name": "@bmb/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "db:seed": "dotenv -e ../../.env -- prisma db seed",
+    "db:reset": "dotenv -e ../../.env -- prisma migrate reset --force",
+    "postinstall": "prisma generate",
+    "db:studio": "dotenv -e ../../.env -- prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@bmb/shared": "*",
+    "@prisma/client": "^6.16.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.3",
+    "prisma": "^6.16.0",
+    "supertest": "^7.1.0",
+    "tsx": "^4.20.0",
+    "vitest": "^3.2.0",
+    "dotenv-cli": "^10.0.0"
+  }
+}

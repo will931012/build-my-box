@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: buildmybox-db
+    environment:
+      POSTGRES_USER: bmb
+      POSTGRES_PASSWORD: bmb
+      POSTGRES_DB: buildmybox
+    # Puerto 5433 en el host para no chocar con un PostgreSQL local en 5432.
+    ports:
+      - "5433:5432"
+    volumes:
+      - bmb-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bmb -d buildmybox"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  bmb-pgdata:
