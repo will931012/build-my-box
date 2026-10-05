@@ -6,9 +6,9 @@
  * Escala: 1 unidad 3D = 10 cm.
  */
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { CameraControls, Edges, Line } from '@react-three/drei';
-import type { Mesh } from 'three';
+import type { Group, Mesh } from 'three';
 import { Vector3 } from 'three';
 import {
   describePosition,
@@ -154,6 +154,35 @@ function BoxShell({ box, result }: { box: Box; result: PackingResult }) {
   );
 }
 
+/** Animación de salida: las unidades quitadas se encogen antes de desaparecer. */
+function useExiting(result: PackingResult): Placement[] {
+  const prev = useRef(new Map<string, Placement>());
+  const [exiting, setExiting] = useState<Placement[]>([]);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    const curr = new Map(result.placements.map((p) => [p.unitId, p]));
+    const gone = [...prev.current.values()].filter((p) => !curr.has(p.unitId));
+    prev.current = curr;
+    setExiting((e) => [...e.filter((x) => !curr.has(x.unitId)), ...gone]);
+    if (gone.length > 0) {
+      timers.current.push(setTimeout(() => setExiting((e) => e.filter((x) => !gone.includes(x))), 500));
+    }
+  }, [result]);
+  return exiting;
+}
+
+function Lights() {
+  return (
+    <>
+      <ambientLight intensity={0.65} />
+      <directionalLight position={[5, 9, 6]} intensity={1.4} />
+      <directionalLight position={[-6, 4, -5]} intensity={0.4} />
+      <hemisphereLight args={['#fff7ed', '#78716c', 0.35]} />
+    </>
+  );
+}
+
 function Scene({
   box,
   result,
@@ -173,21 +202,7 @@ function Scene({
   const L = box.innerLengthMm * S;
   const W = box.innerWidthMm * S;
   const H = box.innerHeightMm * S;
-
-  // Animación de salida: las unidades quitadas se encogen antes de desaparecer.
-  const prev = useRef(new Map<string, Placement>());
-  const [exiting, setExiting] = useState<Placement[]>([]);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  useEffect(() => {
-    const curr = new Map(result.placements.map((p) => [p.unitId, p]));
-    const gone = [...prev.current.values()].filter((p) => !curr.has(p.unitId));
-    prev.current = curr;
-    setExiting((e) => [...e.filter((x) => !curr.has(x.unitId)), ...gone]);
-    if (gone.length > 0) {
-      timers.current.push(setTimeout(() => setExiting((e) => e.filter((x) => !gone.includes(x))), 500));
-    }
-  }, [result]);
+  const exiting = useExiting(result);
 
   useEffect(() => {
     const c = controls.current;
@@ -211,10 +226,7 @@ function Scene({
 
   return (
     <>
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[5, 9, 6]} intensity={1.4} />
-      <directionalLight position={[-6, 4, -5]} intensity={0.4} />
-      <hemisphereLight args={['#fff7ed', '#78716c', 0.35]} />
+      <Lights />
       <BoxShell box={box} result={result} />
       {result.placements.map((p) => (
         <UnitMesh
@@ -240,12 +252,15 @@ export default function BoxViewer3D({
   colors,
   className,
   compact = false,
+  paused = false,
 }: {
   box: Box;
   result: PackingResult;
   colors: Map<string, string>;
   className?: string;
   compact?: boolean;
+  /** Detiene el render (p. ej. cuando el visor salió de la pantalla) para ahorrar batería. */
+  paused?: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<{ id: View; n: number }>({ id: 'perspective', n: 0 });
@@ -268,6 +283,7 @@ export default function BoxViewer3D({
       <Canvas
         camera={{ position: [L * 1.1, H * 1.6, W * 2.1], fov: 40 }}
         dpr={[1, 2]}
+        frameloop={paused ? 'never' : 'always'}
         onPointerMissed={() => setSelected(null)}
         aria-hidden="true"
       >
@@ -345,6 +361,50 @@ export default function BoxViewer3D({
           <p className="mt-1.5 text-xs text-stone-600">{sel.reason}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Gira lentamente la escena del mini visor para que se aprecie el volumen. */
+function Turntable({ children }: { children: React.ReactNode }) {
+  const ref = useRef<Group>(null);
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.y += dt * 0.35;
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+function LookAt({ y }: { y: number }) {
+  const camera = useThree((s) => s.camera);
+  useLayoutEffect(() => camera.lookAt(0, y, 0), [camera, y]);
+  return null;
+}
+
+/**
+ * Versión pequeña y no interactiva del visor (para la barra flotante en móvil).
+ * Muestra el mismo acomodo, con las mismas animaciones al agregar o quitar.
+ */
+export function MiniBoxViewer({ box, result, colors, className }: { box: Box; result: PackingResult; colors: Map<string, string>; className?: string }) {
+  const L = box.innerLengthMm * S;
+  const H = box.innerHeightMm * S;
+  const W = box.innerWidthMm * S;
+  const d = Math.max(L, W, H);
+  const exiting = useExiting(result);
+  return (
+    <div className={cx('pointer-events-none overflow-hidden rounded-xl bg-gradient-to-b from-stone-50 to-stone-200', className)} aria-hidden="true">
+      <Canvas camera={{ position: [d * 1.25, d * 1.25, d * 1.6], fov: 34 }} dpr={[1, 1.5]}>
+        <LookAt y={H * 0.4} />
+        <Lights />
+        <Turntable>
+          <BoxShell box={box} result={result} />
+          {result.placements.map((p) => (
+            <UnitMesh key={p.unitId} p={p} box={box} color={colors.get(p.productId) ?? '#a8a29e'} selected={false} />
+          ))}
+          {exiting.map((p) => (
+            <UnitMesh key={`x-${p.unitId}`} p={p} box={box} color={colors.get(p.productId) ?? '#a8a29e'} selected={false} exiting />
+          ))}
+        </Turntable>
+      </Canvas>
     </div>
   );
 }

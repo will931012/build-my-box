@@ -4,6 +4,7 @@ import { Alert, Card, Spinner } from '../../components/ui';
 import { useCart } from '../../store/cart';
 import { BoxSelector } from './BoxSelector';
 import { Catalog } from './Catalog';
+import { MiniBoxBar } from './MiniBoxBar';
 import { SummaryPanel } from './SummaryPanel';
 import { useBuilder } from './useBuilder';
 
@@ -27,6 +28,17 @@ export function BuilderPage() {
     const t = setTimeout(() => setAnnouncement(''), 5000);
     return () => clearTimeout(t);
   }, [announcement]);
+
+  // ¿El visor grande está en pantalla? Si no, se pausa y aparece la mini caja flotante.
+  const [viewerEl, setViewerEl] = useState<HTMLDivElement | null>(null);
+  const [viewerVisible, setViewerVisible] = useState(true);
+  useEffect(() => {
+    if (!viewerEl || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setViewerVisible(e.isIntersecting), { threshold: 0.2 });
+    io.observe(viewerEl);
+    return () => io.disconnect();
+  }, [viewerEl]);
+  const showBox = () => viewerEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   /** Agrega solo si el motor confirma que cabe; si no, explica por qué. */
   const handleAdd = (id: string) => {
@@ -68,7 +80,7 @@ export function BuilderPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1680px] px-3 py-4 sm:px-4">
+    <div className={`mx-auto max-w-[1680px] px-3 py-4 sm:px-4 ${box ? 'pb-32 xl:pb-4' : ''}`}>
       <div className="mb-4 flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">Construye tu caja</h1>
         <p className="text-sm text-stone-600">
@@ -108,10 +120,10 @@ export function BuilderPage() {
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.45fr)_360px]">
             <div className="order-1 xl:order-2">
-              <div className="h-[52vh] min-h-[320px] lg:h-[60vh] xl:sticky xl:top-[68px] xl:h-[calc(100vh-84px)]">
+              <div ref={setViewerEl} className="h-[52vh] min-h-[320px] lg:h-[60vh] xl:sticky xl:top-[68px] xl:h-[calc(100vh-84px)]">
                 {analysis ? (
                   <Suspense fallback={<ViewerFallback />}>
-                    <BoxViewer3D box={box} result={analysis.result} colors={state.colors} className="h-full" />
+                    <BoxViewer3D box={box} result={analysis.result} colors={state.colors} className="h-full" paused={!viewerVisible} />
                   </Suspense>
                 ) : (
                   <ViewerFallback />
@@ -121,6 +133,7 @@ export function BuilderPage() {
             <SummaryPanel state={state} onAdd={handleAdd} className="order-2 xl:sticky xl:top-[68px] xl:order-3 xl:max-h-[calc(100vh-84px)] xl:self-start xl:overflow-y-auto" />
             <Catalog state={state} onAdd={handleAdd} className="order-3 lg:col-span-2 xl:order-1 xl:col-span-1" />
           </div>
+          {!viewerVisible && <MiniBoxBar state={state} announcement={announcement} onShowBox={showBox} />}
         </>
       )}
     </div>
